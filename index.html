@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>中国語学習アプリ - マイエピソードで学ぶ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <h1 class="logo">🇨🇳 中国語学習</h1>
+      <nav class="nav">
+        <button class="nav-btn active" data-tab="translate">翻訳・学習</button>
+        <button class="nav-btn" data-tab="episodes">保存エピソード <span id="episode-count" class="badge">0</span></button>
+        <button class="nav-btn" data-tab="wordbook">単語帳 <span id="wordbook-count" class="badge">0</span></button>
+        <button class="nav-btn" data-tab="flashcard">フラッシュカード</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ===== 翻訳・学習タブ ===== -->
+    <section id="tab-translate" class="tab-content active">
+      <div class="card input-card">
+        <h2 class="card-title">📝 あなたのエピソードを入力</h2>
+        <p class="card-desc">日常の出来事や思い出を日本語で書いてください。中国語に翻訳して学習できます。</p>
+        <textarea
+          id="episode-input"
+          class="episode-textarea"
+          placeholder="例：今日は友達とカフェに行きました。美味しいコーヒーを飲みながら、楽しい話をしました。"
+          rows="5"
+        ></textarea>
+        <div class="input-actions">
+          <span id="char-count" class="char-count">0 / 500文字</span>
+          <button id="translate-btn" class="btn btn-primary">
+            <span class="btn-icon">🔄</span> 中国語に翻訳する
+          </button>
+        </div>
+      </div>
+
+      <!-- 翻訳結果 -->
+      <div id="result-section" class="result-section hidden">
+        <div class="result-grid">
+          <!-- 原文 -->
+          <div class="card result-card">
+            <h3 class="result-label">🇯🇵 日本語（原文）</h3>
+            <p id="original-text" class="result-text"></p>
+          </div>
+          <!-- 翻訳 -->
+          <div class="card result-card">
+            <h3 class="result-label">🇨🇳 中国語（ピンイン付き）</h3>
+            <div id="translated-text" class="result-text chinese-text"></div>
+            <div class="result-card-actions">
+              <button id="speak-btn" class="btn btn-secondary btn-sm">🔊 発音を聞く</button>
+              <button id="save-episode-btn" class="btn btn-accent btn-sm">💾 エピソードを保存</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 単語学習セクション -->
+        <div class="card learn-card">
+          <h3 class="learn-title">📚 単語・フレーズを学ぶ</h3>
+          <p class="learn-desc">単語をクリックすると詳細が表示されます。⭐ で単語帳に追加できます。</p>
+          <div id="word-list" class="word-list"></div>
+        </div>
+
+        <!-- 文法パターン -->
+        <div id="grammar-section" class="card grammar-card">
+          <h3 class="grammar-title">📖 文法ポイント</h3>
+          <div id="grammar-list" class="grammar-list"></div>
+        </div>
+      </div>
+
+      <!-- ローディング -->
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>翻訳中...</p>
+      </div>
+
+      <!-- エラー -->
+      <div id="error-msg" class="error-msg hidden"></div>
+    </section>
+
+    <!-- ===== 保存エピソードタブ ===== -->
+    <section id="tab-episodes" class="tab-content hidden">
+      <div class="card">
+        <div class="wordbook-header">
+          <h2 class="card-title">💾 保存したエピソード</h2>
+          <button id="clear-episodes-btn" class="btn btn-danger btn-sm">全削除</button>
+        </div>
+        <div id="episodes-list" class="episodes-list">
+          <p class="empty-msg">保存されたエピソードはありません。翻訳後に「エピソードを保存」ボタンで保存できます。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 単語帳タブ ===== -->
+    <section id="tab-wordbook" class="tab-content hidden">
+      <div class="card">
+        <div class="wordbook-header">
+          <h2 class="card-title">⭐ マイ単語帳</h2>
+          <button id="clear-wordbook-btn" class="btn btn-danger btn-sm">全削除</button>
+        </div>
+        <div id="wordbook-list" class="wordbook-list">
+          <p class="empty-msg">単語帳はまだ空です。翻訳結果から単語を追加してください。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== フラッシュカードタブ ===== -->
+    <section id="tab-flashcard" class="tab-content hidden">
+      <div class="card flashcard-container">
+        <h2 class="card-title">🃏 フラッシュカード復習</h2>
+        <div id="flashcard-empty" class="empty-msg">
+          単語帳に単語を追加してから復習を始めましょう。
+        </div>
+        <div id="flashcard-area" class="flashcard-area hidden">
+          <div class="progress-bar-wrap">
+            <div id="fc-progress" class="progress-bar"></div>
+          </div>
+          <p id="fc-counter" class="fc-counter"></p>
+          <div id="flashcard" class="flashcard" onclick="flipCard()">
+            <div class="flashcard-inner">
+              <div class="flashcard-front">
+                <p id="fc-front" class="fc-word"></p>
+                <p class="fc-hint">クリックして答えを見る</p>
+              </div>
+              <div class="flashcard-back">
+                <p id="fc-back-chinese" class="fc-word fc-chinese"></p>
+                <p id="fc-back-pinyin" class="fc-pinyin"></p>
+                <p id="fc-back-meaning" class="fc-meaning"></p>
+              </div>
+            </div>
+          </div>
+          <div class="fc-actions">
+            <button id="fc-prev" class="btn btn-secondary">← 前へ</button>
+            <button id="fc-next" class="btn btn-primary">次へ →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 単語詳細モーダル -->
+  <div id="word-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeModal()"></div>
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- エピソード詳細モーダル -->
+  <div id="episode-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeEpisodeModal()"></div>
+    <div class="modal-content modal-content-wide">
+      <button class="modal-close" onclick="closeEpisodeModal()">✕</button>
+      <div id="episode-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- 保存成功トースト -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
