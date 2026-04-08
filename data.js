@@ -2252,14 +2252,62 @@ const CHAR_PINYIN = {
 
 /**
  * 中国語テキストにピンインを付与してHTMLを生成する（高精度版）
- * - 複合語を優先的にマッチ（長い順）
- * - スペース区切りピンインで各文字に正確に対応
+ * - pinyin-pro ライブラリが利用可能な場合はそちらを優先使用（多音字対応）
+ * - 利用不可の場合は静的辞書（CHAR_PINYIN）にフォールバック
  * @param {string} text - 中国語テキスト
  * @returns {string} - ピンイン付きHTML文字列
  */
 function addPinyinToText(text) {
   if (!text) return '';
 
+  // pinyin-pro が利用可能な場合（高精度・多音字対応）
+  if (typeof pinyinPro !== 'undefined' && pinyinPro && typeof pinyinPro.pinyin === 'function') {
+    return _addPinyinWithLib(text);
+  }
+
+  // フォールバック：静的辞書を使用
+  return _addPinyinWithDict(text);
+}
+
+/**
+ * pinyin-pro ライブラリを使ったピンイン付与（高精度版）
+ * @param {string} text
+ * @returns {string}
+ */
+function _addPinyinWithLib(text) {
+  let html = '';
+  let i = 0;
+
+  while (i < text.length) {
+    const char = text[i];
+
+    if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {
+      // 漢字：pinyin-pro で変換（多音字を文脈から自動判定）
+      try {
+        const py = pinyinPro.pinyin(char, { toneType: 'symbol', type: 'string' }).trim();
+        const escaped = char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += `<span class="pinyin-block"><span class="pinyin-ruby">${py || '?'}</span><span class="pinyin-char">${escaped}</span></span>`;
+      } catch (e) {
+        html += `<span class="pinyin-block"><span class="pinyin-ruby">?</span><span class="pinyin-char">${char}</span></span>`;
+      }
+      i++;
+    } else {
+      // 漢字以外（句読点・スペース・英数字等）
+      const escaped = char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      html += `<span class="pinyin-char pinyin-punct">${escaped}</span>`;
+      i++;
+    }
+  }
+
+  return html;
+}
+
+/**
+ * 静的辞書（CHAR_PINYIN）を使ったピンイン付与（フォールバック）
+ * @param {string} text
+ * @returns {string}
+ */
+function _addPinyinWithDict(text) {
   // 長さ順（降順）にソートしたキー一覧を作成
   const sortedKeys = Object.keys(CHAR_PINYIN).sort((a, b) => b.length - a.length);
 
@@ -2307,8 +2355,27 @@ function addPinyinToText(text) {
 }
 
 /**
+ * 単一漢字または単語のピンインを取得するユーティリティ
+ * pinyin-pro が利用可能な場合はそちらを優先、なければ静的辞書を使用
+ * @param {string} zh - 中国語文字列
+ * @param {string} [fallback] - 静的辞書のフォールバック値
+ * @returns {string} ピンイン文字列（声調記号付き）
+ */
+function getPinyin(zh, fallback) {
+  if (typeof pinyinPro !== 'undefined' && pinyinPro && typeof pinyinPro.pinyin === 'function') {
+    try {
+      return pinyinPro.pinyin(zh, { toneType: 'symbol', type: 'string', separator: '' }).trim();
+    } catch (e) {
+      // フォールバックへ
+    }
+  }
+  return fallback || CHAR_PINYIN[zh] || '';
+}
+
+/**
  * 中国語テキストから全ての漢字・単語を網羅的に抽出する
  * WORD_DICT → CHAR_PINYIN複合語 → 1文字漢字 の優先順で抽出
+ * pinyin-pro が利用可能な場合はピンインを高精度で取得
  * @param {string} chineseText
  * @returns {Array} 抽出された単語リスト
  */
@@ -2317,17 +2384,24 @@ function extractAllWordsFromText(chineseText) {
 
   const results = [];
   const seen = new Set();
+  const usePinyinPro = typeof pinyinPro !== 'undefined' && pinyinPro && typeof pinyinPro.pinyin === 'function';
 
   // 1. WORD_DICT から検索（詳細情報あり）
   WORD_DICT.forEach(word => {
     if (chineseText.includes(word.zh) && !seen.has(word.zh)) {
       seen.add(word.zh);
+      // pinyin-pro が使える場合はより正確なピンインを取得
+      const pinyin = usePinyinPro ? getPinyin(word.zh, word.pinyin) : word.pinyin;
       results.push({
         zh: word.zh,
-        pinyin: word.pinyin,
+        pinyin: pinyin,
         meaning: word.meaning,
         type: word.type,
         example: word.example || '',
+        examples: word.examples || [],
+        usage: word.usage || '',
+        synonyms: word.synonyms || [],
+        antonyms: word.antonyms || [],
         fromDict: true
       });
     }
@@ -2341,9 +2415,10 @@ function extractAllWordsFromText(chineseText) {
   multiKeys.forEach(word => {
     if (chineseText.includes(word) && !seen.has(word)) {
       seen.add(word);
+      const fallbackPinyin = CHAR_PINYIN[word].replace(/ /g, '');
       results.push({
         zh: word,
-        pinyin: CHAR_PINYIN[word].replace(/ /g, ''),
+        pinyin: usePinyinPro ? getPinyin(word, fallbackPinyin) : fallbackPinyin,
         meaning: '',
         type: '',
         example: '',
@@ -2352,19 +2427,22 @@ function extractAllWordsFromText(chineseText) {
     }
   });
 
-  // 3. 1文字の漢字も抽出（CHAR_PINYIN に存在するもの）
+  // 3. 1文字の漢字も抽出（CHAR_PINYIN に存在するもの、またはpinyin-pro使用時は全漢字）
   for (let i = 0; i < chineseText.length; i++) {
     const char = chineseText[i];
-    if (/[\u4e00-\u9fff]/.test(char) && !seen.has(char) && CHAR_PINYIN[char]) {
-      seen.add(char);
-      results.push({
-        zh: char,
-        pinyin: CHAR_PINYIN[char],
-        meaning: '',
-        type: '',
-        example: '',
-        fromDict: false
-      });
+    if (/[\u4e00-\u9fff]/.test(char) && !seen.has(char)) {
+      const fallbackPinyin = CHAR_PINYIN[char] || '';
+      if (fallbackPinyin || usePinyinPro) {
+        seen.add(char);
+        results.push({
+          zh: char,
+          pinyin: usePinyinPro ? getPinyin(char, fallbackPinyin) : fallbackPinyin,
+          meaning: '',
+          type: '',
+          example: '',
+          fromDict: false
+        });
+      }
     }
   }
 

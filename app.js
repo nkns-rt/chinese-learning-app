@@ -54,6 +54,13 @@ const referenceList    = document.getElementById('reference-list');
 
 // ===== 初期化 =====
 function init() {
+  // pinyin-pro ロード確認
+  if (typeof pinyinPro !== 'undefined' && pinyinPro && typeof pinyinPro.pinyin === 'function') {
+    console.log('[pinyin-pro] ライブラリ読み込み成功 - 高精度ピンイン変換が有効です');
+  } else {
+    console.warn('[pinyin-pro] ライブラリ未読み込み - 静的辞書にフォールバックします');
+  }
+
   // タブ切り替え
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -168,9 +175,14 @@ function handleAnalyze() {
   hideError();
   currentText = text;
 
-  // ピンイン付き表示
+  // ピンイン付き表示（pinyin-pro 使用時は文脈考慮で多音字を正確に変換）
   if (typeof addPinyinToText === 'function') {
-    pinyinText.innerHTML = addPinyinToText(text);
+    // pinyin-pro が利用可能な場合は文全体を渡して文脈考慮モードで変換
+    if (typeof pinyinPro !== 'undefined' && pinyinPro && typeof pinyinPro.pinyin === 'function') {
+      pinyinText.innerHTML = _addPinyinWithLibContextual(text);
+    } else {
+      pinyinText.innerHTML = addPinyinToText(text);
+    }
   } else {
     pinyinText.textContent = text;
   }
@@ -186,6 +198,49 @@ function handleAnalyze() {
 
   // 結果へスクロール
   resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * pinyin-pro の文脈考慮モードで文全体を変換し、1文字ずつピンインブロックを生成
+ * 多音字（例：中 zhōng/zhòng、行 xíng/háng）を文脈から正確に判定
+ * @param {string} text
+ * @returns {string} HTML文字列
+ */
+function _addPinyinWithLibContextual(text) {
+  try {
+    // 漢字のみ抽出してピンイン配列を取得（非漢字は除外）
+    const chineseChars = text.split('').filter(c => /[\u4e00-\u9fff\u3400-\u4dbf]/.test(c));
+    const chineseOnly = chineseChars.join('');
+
+    // 文全体を渡すことで pinyin-pro が文脈から多音字を判定
+    const pinyinArr = pinyinPro.pinyin(chineseOnly, {
+      toneType: 'symbol',
+      type: 'array'
+    });
+
+    let html = '';
+    let pinyinIdx = 0;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {
+        const py = pinyinArr[pinyinIdx] || '?';
+        const escaped = char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += `<span class="pinyin-block"><span class="pinyin-ruby">${py}</span><span class="pinyin-char">${escaped}</span></span>`;
+        pinyinIdx++;
+      } else {
+        // 漢字以外（句読点・スペース・英数字等）
+        const escaped = char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += `<span class="pinyin-char pinyin-punct">${escaped}</span>`;
+      }
+    }
+
+    return html;
+  } catch (e) {
+    // エラー時は文字単位フォールバック
+    return _addPinyinWithLib(text);
+  }
 }
 
 // ===== 単語チップ生成 =====
@@ -423,11 +478,20 @@ function toggleGrammarbookFromModal(pattern) {
 // ===== 単語モーダル（強化版）=====
 function openWordModal(word) {
   const isSaved = wordbook.some(w => w.zh === word.zh);
-  const displayPinyin = word.pinyin ? word.pinyin.replace(/ /g, '') : '';
 
-  const pinyinHtml = typeof addPinyinToText === 'function'
-    ? addPinyinToText(word.zh)
-    : word.zh;
+  // pinyin-pro が使える場合は最新のピンインを取得（多音字対応）
+  let displayPinyin = word.pinyin ? word.pinyin.replace(/ /g, '') : '';
+  if (typeof pinyinPro !== 'undefined' && pinyinPro && typeof pinyinPro.pinyin === 'function') {
+    try {
+      displayPinyin = pinyinPro.pinyin(word.zh, { toneType: 'symbol', type: 'string', separator: '' }).trim();
+    } catch (e) { /* フォールバック */ }
+  }
+
+  // ピンイン付きHTML生成（文脈考慮モード優先）
+  const pinyinHtml = (typeof _addPinyinWithLibContextual === 'function' &&
+    typeof pinyinPro !== 'undefined' && pinyinPro)
+    ? _addPinyinWithLibContextual(word.zh)
+    : (typeof addPinyinToText === 'function' ? addPinyinToText(word.zh) : word.zh);
 
   // 複数例文セクション
   let examplesHtml = '';
