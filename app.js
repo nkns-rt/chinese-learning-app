@@ -1,58 +1,56 @@
 /**
  * app.js
- * 中国語学習アプリ メインロジック
- * - MyMemory API による翻訳
- * - ピンイン付き中国語テキスト表示
- * - エピソード保存・編集・一覧
- * - 単語帳・フラッシュカード
- * - エピソードから単語を漏れなく抽出して単語帳に一括保存
+ * 中国語学習アプリ メインロジック（文章解析・文法リファレンス版）
+ * - 翻訳機能廃止
+ * - 中国語テキスト直接入力 → 単語・文法自動解析
+ * - 文法リファレンス（全パターン一覧・検索）
+ * - 単語モーダル：類義語・反義語・用法・複数例文表示
+ * - 文法モーダル：詳細説明・複数例文・練習問題表示
  */
 
 // ===== 状態管理 =====
-let currentTranslation = '';
-let currentOriginal = '';
-let wordbook = JSON.parse(localStorage.getItem('wordbook') || '[]');
-let savedEpisodes = JSON.parse(localStorage.getItem('savedEpisodes') || '[]');
+let currentText = '';
+let wordbook    = JSON.parse(localStorage.getItem('wordbook')    || '[]');
+let grammarbook = JSON.parse(localStorage.getItem('grammarbook') || '[]');
 let flashcardIndex = 0;
-let isFlipped = false;
-let editingEpisodeId = null; // 編集中エピソードID
+let isFlipped      = false;
 
 // ===== DOM取得 =====
-const episodeInput    = document.getElementById('episode-input');
-const charCount       = document.getElementById('char-count');
-const translateBtn    = document.getElementById('translate-btn');
-const resultSection   = document.getElementById('result-section');
-const originalText    = document.getElementById('original-text');
-const translatedText  = document.getElementById('translated-text');
-const speakBtn        = document.getElementById('speak-btn');
-const saveEpisodeBtn  = document.getElementById('save-episode-btn');
-const wordList        = document.getElementById('word-list');
-const grammarList     = document.getElementById('grammar-list');
-const grammarSection  = document.getElementById('grammar-section');
-const loadingEl       = document.getElementById('loading');
-const errorMsg        = document.getElementById('error-msg');
-const wordbookList    = document.getElementById('wordbook-list');
-const wordbookCount   = document.getElementById('wordbook-count');
-const episodeCount    = document.getElementById('episode-count');
-const clearWordbookBtn = document.getElementById('clear-wordbook-btn');
-const clearEpisodesBtn = document.getElementById('clear-episodes-btn');
-const episodesList    = document.getElementById('episodes-list');
-const wordModal       = document.getElementById('word-modal');
-const modalBody       = document.getElementById('modal-body');
-const episodeModal    = document.getElementById('episode-modal');
-const episodeModalBody = document.getElementById('episode-modal-body');
-const flashcardArea   = document.getElementById('flashcard-area');
-const flashcardEmpty  = document.getElementById('flashcard-empty');
-const flashcard       = document.getElementById('flashcard');
-const fcFront         = document.getElementById('fc-front');
-const fcBackChinese   = document.getElementById('fc-back-chinese');
-const fcBackPinyin    = document.getElementById('fc-back-pinyin');
-const fcBackMeaning   = document.getElementById('fc-back-meaning');
-const fcCounter       = document.getElementById('fc-counter');
-const fcProgress      = document.getElementById('fc-progress');
-const fcPrev          = document.getElementById('fc-prev');
-const fcNext          = document.getElementById('fc-next');
-const toastEl         = document.getElementById('toast');
+const chineseInput     = document.getElementById('chinese-input');
+const charCount        = document.getElementById('char-count');
+const sampleBtn        = document.getElementById('sample-btn');
+const analyzeBtn       = document.getElementById('analyze-btn');
+const resultSection    = document.getElementById('result-section');
+const pinyinText       = document.getElementById('pinyin-text');
+const speakBtn         = document.getElementById('speak-btn');
+const wordList         = document.getElementById('word-list');
+const grammarList      = document.getElementById('grammar-list');
+const grammarSection   = document.getElementById('grammar-section');
+const errorMsg         = document.getElementById('error-msg');
+const wordbookList     = document.getElementById('wordbook-list');
+const wordbookCount    = document.getElementById('wordbook-count');
+const grammarbookCount = document.getElementById('grammarbook-count');
+const clearWordbookBtn    = document.getElementById('clear-wordbook-btn');
+const clearGrammarbookBtn = document.getElementById('clear-grammarbook-btn');
+const grammarbookList  = document.getElementById('grammarbook-list');
+const wordModal        = document.getElementById('word-modal');
+const modalBody        = document.getElementById('modal-body');
+const grammarModal     = document.getElementById('grammar-modal');
+const grammarModalBody = document.getElementById('grammar-modal-body');
+const flashcardArea    = document.getElementById('flashcard-area');
+const flashcardEmpty   = document.getElementById('flashcard-empty');
+const flashcard        = document.getElementById('flashcard');
+const fcFront          = document.getElementById('fc-front');
+const fcBackChinese    = document.getElementById('fc-back-chinese');
+const fcBackPinyin     = document.getElementById('fc-back-pinyin');
+const fcBackMeaning    = document.getElementById('fc-back-meaning');
+const fcCounter        = document.getElementById('fc-counter');
+const fcProgress       = document.getElementById('fc-progress');
+const fcPrev           = document.getElementById('fc-prev');
+const fcNext           = document.getElementById('fc-next');
+const toastEl          = document.getElementById('toast');
+const referenceSearch  = document.getElementById('reference-search');
+const referenceList    = document.getElementById('reference-list');
 
 // ===== 初期化 =====
 function init() {
@@ -62,26 +60,32 @@ function init() {
   });
 
   // 文字数カウント
-  episodeInput.addEventListener('input', () => {
-    const len = episodeInput.value.length;
-    charCount.textContent = `${len} / 500文字`;
+  chineseInput.addEventListener('input', () => {
+    const len = chineseInput.value.length;
+    charCount.textContent = `${len}文字`;
     charCount.style.color = len > 450 ? '#e63946' : '';
-    if (len > 500) episodeInput.value = episodeInput.value.slice(0, 500);
+    if (len > 500) chineseInput.value = chineseInput.value.slice(0, 500);
   });
 
-  // 翻訳ボタン
-  translateBtn.addEventListener('click', handleTranslate);
+  // サンプル文挿入
+  sampleBtn.addEventListener('click', () => {
+    if (typeof SAMPLE_SENTENCES !== 'undefined' && SAMPLE_SENTENCES.length > 0) {
+      const sample = SAMPLE_SENTENCES[Math.floor(Math.random() * SAMPLE_SENTENCES.length)];
+      chineseInput.value = sample;
+      charCount.textContent = `${sample.length}文字`;
+    }
+  });
 
-  // Ctrl+Enter で翻訳
-  episodeInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleTranslate();
+  // 解析ボタン
+  analyzeBtn.addEventListener('click', handleAnalyze);
+
+  // Ctrl+Enter で解析
+  chineseInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAnalyze();
   });
 
   // 発音ボタン
-  speakBtn.addEventListener('click', () => speakChinese(currentTranslation));
-
-  // エピソード保存ボタン
-  saveEpisodeBtn.addEventListener('click', handleSaveEpisode);
+  speakBtn.addEventListener('click', () => speakChinese(currentText));
 
   // 単語帳クリア
   clearWordbookBtn.addEventListener('click', () => {
@@ -92,12 +96,12 @@ function init() {
     }
   });
 
-  // エピソードクリア
-  clearEpisodesBtn.addEventListener('click', () => {
-    if (confirm('保存したエピソードを全削除しますか？')) {
-      savedEpisodes = [];
-      saveEpisodes();
-      renderEpisodesList();
+  // 文法帳クリア
+  clearGrammarbookBtn.addEventListener('click', () => {
+    if (confirm('文法帳を全削除しますか？')) {
+      grammarbook = [];
+      saveGrammarbook();
+      renderGrammarbook();
     }
   });
 
@@ -111,17 +115,19 @@ function init() {
     renderFlashcard();
   });
 
-  // サンプルエピソードをランダム表示
-  if (typeof SAMPLE_EPISODES !== 'undefined' && SAMPLE_EPISODES.length > 0) {
-    const sample = SAMPLE_EPISODES[Math.floor(Math.random() * SAMPLE_EPISODES.length)];
-    episodeInput.placeholder = `例：${sample}`;
+  // 文法リファレンス検索
+  if (referenceSearch) {
+    referenceSearch.addEventListener('input', () => {
+      renderReferenceList(referenceSearch.value.trim());
+    });
   }
 
   // 初期レンダリング
   renderWordbook();
-  renderEpisodesList();
+  renderGrammarbook();
   updateWordbookCount();
-  updateEpisodeCount();
+  updateGrammarbookCount();
+  renderReferenceList('');
 }
 
 // ===== タブ切り替え =====
@@ -140,80 +146,73 @@ function switchTab(tabName) {
   const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  if (tabName === 'flashcard') renderFlashcard();
-  if (tabName === 'wordbook') renderWordbook();
-  if (tabName === 'episodes') renderEpisodesList();
+  if (tabName === 'flashcard')  renderFlashcard();
+  if (tabName === 'wordbook')   renderWordbook();
+  if (tabName === 'grammarbook') renderGrammarbook();
+  if (tabName === 'reference')  renderReferenceList(referenceSearch ? referenceSearch.value.trim() : '');
 }
 
-// ===== 翻訳処理 =====
-async function handleTranslate() {
-  const text = episodeInput.value.trim();
+// ===== 文章解析処理 =====
+function handleAnalyze() {
+  const text = chineseInput.value.trim();
   if (!text) {
-    showError('エピソードを入力してください。');
+    showError('中国語テキストを入力してください。');
+    return;
+  }
+  // 中国語文字が含まれているか確認
+  if (!/[\u4e00-\u9fff]/.test(text)) {
+    showError('中国語（漢字）を含むテキストを入力してください。');
     return;
   }
 
-  showLoading(true);
   hideError();
-  resultSection.classList.add('hidden');
+  currentText = text;
 
-  try {
-    const translated = await translateText(text, 'ja', 'zh-CN');
-    currentOriginal = text;
-    currentTranslation = translated;
-
-    originalText.textContent = text;
-    renderTranslatedText(translated);
-    renderWordChips(translated);
-    renderGrammarPoints(translated);
-
-    resultSection.classList.remove('hidden');
-  } catch (err) {
-    showError(`翻訳に失敗しました。インターネット接続を確認してください。\n(${err.message})`);
-  } finally {
-    showLoading(false);
-  }
-}
-
-// ===== MyMemory API 翻訳 =====
-async function translateText(text, from, to) {
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  if (data.responseStatus !== 200) throw new Error(data.responseDetails || '翻訳エラー');
-  return data.responseData.translatedText;
-}
-
-// ===== ピンイン付き翻訳テキスト表示 =====
-function renderTranslatedText(text) {
+  // ピンイン付き表示
   if (typeof addPinyinToText === 'function') {
-    translatedText.innerHTML = addPinyinToText(text);
+    pinyinText.innerHTML = addPinyinToText(text);
   } else {
-    translatedText.textContent = text;
+    pinyinText.textContent = text;
   }
+
+  // 単語チップ生成
+  renderWordChips(text);
+
+  // 文法ポイント表示
+  renderGrammarPoints(text);
+
+  // 結果セクション表示
+  resultSection.classList.remove('hidden');
+
+  // 結果へスクロール
+  resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ===== 単語チップ生成 =====
 function renderWordChips(chineseText) {
   wordList.innerHTML = '';
 
-  const matched = WORD_DICT.filter(w => chineseText.includes(w.zh));
+  const allWords = (typeof extractAllWordsFromText === 'function')
+    ? extractAllWordsFromText(chineseText)
+    : WORD_DICT.filter(w => chineseText.includes(w.zh));
 
-  if (matched.length === 0) {
-    wordList.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">この翻訳文に対応する単語が辞書に見つかりませんでした。</p>';
+  if (allWords.length === 0) {
+    wordList.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">この文章に対応する単語が見つかりませんでした。</p>';
     return;
   }
 
-  matched.forEach(word => {
+  allWords.forEach(word => {
     const isSaved = wordbook.some(w => w.zh === word.zh);
     const chip = document.createElement('div');
     chip.className = `word-chip${isSaved ? ' saved' : ''}`;
     chip.dataset.zh = word.zh;
+
+    const displayPinyin = word.pinyin ? word.pinyin.replace(/ /g, '') : '';
+
     chip.innerHTML = `
       <span class="chip-chinese">${word.zh}</span>
-      <span class="chip-pinyin">${word.pinyin}</span>
-      <button class="add-btn" title="${isSaved ? '単語帳から削除' : '単語帳に追加'}" onclick="toggleWordbook(event, '${word.zh}')">
+      <span class="chip-pinyin">${displayPinyin}</span>
+      <button class="add-btn" title="${isSaved ? '単語帳から削除' : '単語帳に追加'}" onclick="toggleWordbook(event, '${escapeAttr(word.zh)}')">
         ${isSaved ? '⭐' : '☆'}
       </button>
     `;
@@ -239,386 +238,88 @@ function renderGrammarPoints(chineseText) {
 
   grammarSection.classList.remove('hidden');
   matched.forEach(g => {
+    const isSaved = grammarbook.some(gb => gb.pattern === g.pattern);
     const item = document.createElement('div');
     item.className = 'grammar-item';
     item.innerHTML = `
-      <div class="grammar-pattern">${g.pattern}</div>
+      <div class="grammar-item-header">
+        <div class="grammar-pattern">${g.pattern}</div>
+        <button class="grammar-save-btn${isSaved ? ' saved' : ''}" title="${isSaved ? '文法帳から削除' : '文法帳に保存'}" onclick="toggleGrammarbook(event, '${escapeAttr(g.pattern)}')">
+          ${isSaved ? '📌' : '📎'}
+        </button>
+      </div>
       <div class="grammar-desc">${g.desc}</div>
       <div class="grammar-example">例：${g.example}</div>
     `;
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('grammar-save-btn')) return;
+      openGrammarModal(g);
+    });
     grammarList.appendChild(item);
   });
 }
 
-// ===== エピソード保存 =====
-function handleSaveEpisode() {
-  if (!currentOriginal || !currentTranslation) return;
+// ===== 文法リファレンス一覧 =====
+function renderReferenceList(query) {
+  if (!referenceList) return;
 
-  // 重複チェック（同じ原文が既に保存されている場合）
-  const exists = savedEpisodes.some(ep => ep.original === currentOriginal);
-  if (exists) {
-    showToast('このエピソードは既に保存されています');
+  const filtered = query
+    ? GRAMMAR_PATTERNS.filter(g =>
+        g.pattern.includes(query) ||
+        g.desc.includes(query) ||
+        (g.detail && g.detail.includes(query)) ||
+        g.keywords.some(kw => kw.includes(query))
+      )
+    : GRAMMAR_PATTERNS;
+
+  if (filtered.length === 0) {
+    referenceList.innerHTML = '<p class="empty-msg">該当する文法パターンが見つかりませんでした。</p>';
     return;
   }
 
-  const episode = {
-    id: Date.now(),
-    original: currentOriginal,
-    translated: currentTranslation,
-    date: new Date().toLocaleDateString('ja-JP', {
-      year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    })
-  };
-
-  savedEpisodes.unshift(episode);
-  saveEpisodes();
-  updateEpisodeCount();
-  showToast('💾 エピソードを保存しました！');
-}
-
-// ===== エピソード一覧レンダリング =====
-function renderEpisodesList() {
-  if (savedEpisodes.length === 0) {
-    episodesList.innerHTML = '<p class="empty-msg">保存されたエピソードはありません。翻訳後に「エピソードを保存」ボタンで保存できます。</p>';
-    return;
-  }
-
-  episodesList.innerHTML = '';
-  savedEpisodes.forEach((ep, i) => {
+  referenceList.innerHTML = '';
+  filtered.forEach(g => {
+    const isSaved = grammarbook.some(gb => gb.pattern === g.pattern);
     const item = document.createElement('div');
-    item.className = 'episode-item';
+    item.className = 'reference-item';
     item.innerHTML = `
-      <div class="ep-date">📅 ${ep.date}</div>
-      <div class="ep-original">🇯🇵 ${ep.original}</div>
-      <div class="ep-translated">🇨🇳 ${ep.translated}</div>
-      <div class="ep-actions">
-        <button class="ep-edit" onclick="openEditEpisodeModal(event, ${ep.id})" title="編集">✏️</button>
-        <button class="ep-delete" onclick="deleteEpisode(event, ${i})" title="削除">✕</button>
-      </div>
-    `;
-    item.addEventListener('click', (e) => {
-      if (e.target.classList.contains('ep-delete') || e.target.classList.contains('ep-edit')) return;
-      openEpisodeModal(ep);
-    });
-    episodesList.appendChild(item);
-  });
-}
-
-function deleteEpisode(event, index) {
-  event.stopPropagation();
-  if (!confirm('このエピソードを削除しますか？')) return;
-  savedEpisodes.splice(index, 1);
-  saveEpisodes();
-  updateEpisodeCount();
-  renderEpisodesList();
-}
-
-function saveEpisodes() {
-  localStorage.setItem('savedEpisodes', JSON.stringify(savedEpisodes));
-}
-
-function updateEpisodeCount() {
-  if (episodeCount) episodeCount.textContent = savedEpisodes.length;
-}
-
-// ===== エピソード詳細モーダル =====
-function openEpisodeModal(ep) {
-  const pinyinHtml = typeof addPinyinToText === 'function'
-    ? addPinyinToText(ep.translated)
-    : ep.translated;
-
-  // エピソード内の漢字を全て抽出してピンイン辞書と照合
-  const extractedWords = extractWordsFromText(ep.translated);
-  const allSaved = extractedWords.length > 0 && extractedWords.every(w => wordbook.some(wb => wb.zh === w.zh));
-
-  let wordsHtml = '';
-  if (extractedWords.length > 0) {
-    wordsHtml = `
-      <div class="ep-modal-section">
-        <div class="ep-modal-label">📚 含まれる単語</div>
-        <div class="ep-modal-words">
-          ${extractedWords.map(w => {
-            const saved = wordbook.some(wb => wb.zh === w.zh);
-            return `<span class="ep-word-chip${saved ? ' saved' : ''}" data-zh="${w.zh}" onclick="toggleWordbookFromModal('${w.zh}', '${w.pinyin}', '${w.meaning.replace(/'/g, "\\'")}')">
-              <span class="chip-chinese">${w.zh}</span>
-              <span class="chip-pinyin">${w.pinyin}</span>
-              <span class="chip-star">${saved ? '⭐' : '☆'}</span>
-            </span>`;
-          }).join('')}
-        </div>
-        <button class="btn btn-accent btn-sm ep-save-all-btn" onclick="saveAllWordsFromEpisode('${ep.id}')" ${allSaved ? 'disabled' : ''}>
-          ${allSaved ? '✅ 全単語保存済み' : '⭐ 全単語を単語帳に保存'}
+      <div class="reference-item-header">
+        <div class="reference-pattern">${g.pattern}</div>
+        <button class="grammar-save-btn${isSaved ? ' saved' : ''}" title="${isSaved ? '文法帳から削除' : '文法帳に保存'}" onclick="toggleGrammarbookFromReference(event, '${escapeAttr(g.pattern)}')">
+          ${isSaved ? '📌' : '📎'}
         </button>
       </div>
+      <div class="reference-desc">${g.desc}</div>
+      <div class="reference-example">例：${g.example}</div>
     `;
-  }
-
-  episodeModalBody.innerHTML = `
-    <p class="ep-modal-date">📅 ${ep.date}</p>
-    <div class="ep-modal-section">
-      <div class="ep-modal-label">🇯🇵 日本語（原文）</div>
-      <div class="ep-modal-text">${ep.original}</div>
-    </div>
-    <div class="ep-modal-section">
-      <div class="ep-modal-label">🇨🇳 中国語（ピンイン付き）</div>
-      <div class="ep-modal-text ep-modal-chinese chinese-text">${pinyinHtml}</div>
-    </div>
-    ${wordsHtml}
-    <div class="ep-modal-footer">
-      <button class="btn btn-secondary btn-sm" onclick="speakChinese('${ep.translated.replace(/'/g, "\\'")}')">
-        🔊 発音を聞く
-      </button>
-      <button class="btn btn-warning btn-sm" onclick="openEditEpisodeModal(event, ${ep.id})">
-        ✏️ 編集する
-      </button>
-    </div>
-  `;
-  episodeModal.classList.remove('hidden');
-}
-
-function closeEpisodeModal() {
-  episodeModal.classList.add('hidden');
-  editingEpisodeId = null;
-}
-
-// ===== エピソード編集モーダル =====
-function openEditEpisodeModal(event, episodeId) {
-  if (event) event.stopPropagation();
-  const ep = savedEpisodes.find(e => e.id === episodeId);
-  if (!ep) return;
-
-  editingEpisodeId = episodeId;
-
-  episodeModalBody.innerHTML = `
-    <p class="ep-modal-date">✏️ エピソードを編集</p>
-    <div class="ep-modal-section">
-      <div class="ep-modal-label">🇯🇵 日本語（原文）</div>
-      <textarea id="edit-original" class="edit-textarea" rows="3">${ep.original}</textarea>
-    </div>
-    <div class="ep-modal-section">
-      <div class="ep-modal-label">🇨🇳 中国語</div>
-      <textarea id="edit-translated" class="edit-textarea" rows="3">${ep.translated}</textarea>
-    </div>
-    <div class="ep-modal-footer">
-      <button class="btn btn-secondary btn-sm" onclick="closeEpisodeModal()">キャンセル</button>
-      <button class="btn btn-primary btn-sm" onclick="saveEditedEpisode()">💾 保存する</button>
-      <button class="btn btn-accent btn-sm" onclick="retranslateEpisode()">🔄 再翻訳する</button>
-    </div>
-    <div id="edit-loading" class="edit-loading hidden">🔄 翻訳中...</div>
-  `;
-  episodeModal.classList.remove('hidden');
-}
-
-// ===== 編集内容を保存 =====
-function saveEditedEpisode() {
-  const newOriginal = document.getElementById('edit-original')?.value.trim();
-  const newTranslated = document.getElementById('edit-translated')?.value.trim();
-
-  if (!newOriginal || !newTranslated) {
-    alert('日本語と中国語の両方を入力してください。');
-    return;
-  }
-
-  const idx = savedEpisodes.findIndex(e => e.id === editingEpisodeId);
-  if (idx < 0) return;
-
-  savedEpisodes[idx].original = newOriginal;
-  savedEpisodes[idx].translated = newTranslated;
-  savedEpisodes[idx].date = new Date().toLocaleDateString('ja-JP', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  }) + '（編集済み）';
-
-  saveEpisodes();
-  renderEpisodesList();
-  closeEpisodeModal();
-  showToast('✏️ エピソードを更新しました！');
-}
-
-// ===== 編集中エピソードを再翻訳 =====
-async function retranslateEpisode() {
-  const originalVal = document.getElementById('edit-original')?.value.trim();
-  if (!originalVal) {
-    alert('日本語テキストを入力してください。');
-    return;
-  }
-
-  const loadingEl2 = document.getElementById('edit-loading');
-  if (loadingEl2) loadingEl2.classList.remove('hidden');
-
-  try {
-    const translated = await translateText(originalVal, 'ja', 'zh-CN');
-    const editTranslated = document.getElementById('edit-translated');
-    if (editTranslated) editTranslated.value = translated;
-  } catch (err) {
-    alert(`翻訳に失敗しました: ${err.message}`);
-  } finally {
-    if (loadingEl2) loadingEl2.classList.add('hidden');
-  }
-}
-
-// ===== エピソードから単語を抽出 =====
-/**
- * 中国語テキストから CHAR_PINYIN の複合語・単語を抽出する
- * WORD_DICT に含まれる単語を優先し、それ以外は CHAR_PINYIN の複合語から抽出
- */
-function extractWordsFromText(chineseText) {
-  if (!chineseText) return [];
-
-  const results = [];
-  const seen = new Set();
-
-  // まず WORD_DICT から検索（詳細情報あり）
-  WORD_DICT.forEach(word => {
-    if (chineseText.includes(word.zh) && !seen.has(word.zh)) {
-      seen.add(word.zh);
-      results.push({ zh: word.zh, pinyin: word.pinyin, meaning: word.meaning, type: word.type, fromDict: true });
-    }
-  });
-
-  // 次に CHAR_PINYIN の複合語（2文字以上）から検索
-  if (typeof CHAR_PINYIN !== 'undefined') {
-    const multiKeys = Object.keys(CHAR_PINYIN)
-      .filter(k => k.length >= 2)
-      .sort((a, b) => b.length - a.length);
-
-    multiKeys.forEach(word => {
-      if (chineseText.includes(word) && !seen.has(word)) {
-        seen.add(word);
-        results.push({
-          zh: word,
-          pinyin: CHAR_PINYIN[word],
-          meaning: '',
-          type: '',
-          fromDict: false
-        });
-      }
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('grammar-save-btn')) return;
+      openGrammarModal(g);
     });
-  }
-
-  // 1文字の漢字も抽出（CHAR_PINYIN に存在するもの）
-  if (typeof CHAR_PINYIN !== 'undefined') {
-    for (let i = 0; i < chineseText.length; i++) {
-      const char = chineseText[i];
-      if (/[\u4e00-\u9fff]/.test(char) && !seen.has(char) && CHAR_PINYIN[char]) {
-        seen.add(char);
-        results.push({
-          zh: char,
-          pinyin: CHAR_PINYIN[char],
-          meaning: '',
-          type: '',
-          fromDict: false
-        });
-      }
-    }
-  }
-
-  return results;
+    referenceList.appendChild(item);
+  });
 }
 
-// ===== モーダル内の単語帳トグル =====
-function toggleWordbookFromModal(zh, pinyin, meaning) {
+// ===== 単語帳トグル（解析結果チップ用）=====
+function toggleWordbook(event, zh) {
+  event.stopPropagation();
+
   const idx = wordbook.findIndex(w => w.zh === zh);
   if (idx >= 0) {
     wordbook.splice(idx, 1);
     showToast(`「${zh}」を単語帳から削除しました`);
   } else {
-    // WORD_DICT から詳細情報を取得
     const dictWord = WORD_DICT.find(w => w.zh === zh);
+    const pinyin = dictWord ? dictWord.pinyin : (CHAR_PINYIN[zh] || '');
     wordbook.push({
       zh,
-      pinyin: dictWord ? dictWord.pinyin : pinyin,
-      meaning: dictWord ? dictWord.meaning : meaning,
-      ja: dictWord ? dictWord.ja : ''
+      pinyin,
+      meaning: dictWord ? dictWord.meaning : '',
+      ja:      dictWord ? dictWord.ja      : '',
+      type:    dictWord ? dictWord.type    : '',
+      example: dictWord ? dictWord.example : ''
     });
     showToast(`⭐ 「${zh}」を単語帳に追加しました`);
-  }
-
-  saveWordbook();
-  updateWordbookCount();
-
-  // モーダル内のチップ状態を更新
-  const chip = document.querySelector(`.ep-word-chip[data-zh="${zh}"]`);
-  if (chip) {
-    const isSaved = wordbook.some(w => w.zh === zh);
-    chip.classList.toggle('saved', isSaved);
-    const star = chip.querySelector('.chip-star');
-    if (star) star.textContent = isSaved ? '⭐' : '☆';
-  }
-
-  // 「全単語保存」ボタンの状態を更新
-  updateSaveAllBtn();
-}
-
-// ===== エピソードの全単語を単語帳に保存 =====
-function saveAllWordsFromEpisode(episodeId) {
-  // 現在表示中のエピソードのテキストを取得
-  const ep = savedEpisodes.find(e => String(e.id) === String(episodeId));
-  if (!ep) return;
-
-  const words = extractWordsFromText(ep.translated);
-  let addedCount = 0;
-
-  words.forEach(w => {
-    if (!wordbook.some(wb => wb.zh === w.zh)) {
-      const dictWord = WORD_DICT.find(d => d.zh === w.zh);
-      wordbook.push({
-        zh: w.zh,
-        pinyin: dictWord ? dictWord.pinyin : w.pinyin,
-        meaning: dictWord ? dictWord.meaning : w.meaning,
-        ja: dictWord ? dictWord.ja : ''
-      });
-      addedCount++;
-    }
-  });
-
-  saveWordbook();
-  updateWordbookCount();
-
-  if (addedCount > 0) {
-    showToast(`⭐ ${addedCount}個の単語を単語帳に追加しました！`);
-  } else {
-    showToast('全ての単語は既に単語帳に保存されています');
-  }
-
-  // モーダル内の全チップを更新
-  document.querySelectorAll('.ep-word-chip').forEach(chip => {
-    const zh = chip.dataset.zh;
-    const isSaved = wordbook.some(w => w.zh === zh);
-    chip.classList.toggle('saved', isSaved);
-    const star = chip.querySelector('.chip-star');
-    if (star) star.textContent = isSaved ? '⭐' : '☆';
-  });
-
-  updateSaveAllBtn();
-}
-
-// ===== 「全単語保存」ボタンの状態更新 =====
-function updateSaveAllBtn() {
-  const btn = document.querySelector('.ep-save-all-btn');
-  if (!btn) return;
-
-  const chips = document.querySelectorAll('.ep-word-chip');
-  const allSaved = chips.length > 0 && Array.from(chips).every(chip => {
-    return wordbook.some(w => w.zh === chip.dataset.zh);
-  });
-
-  btn.disabled = allSaved;
-  btn.textContent = allSaved ? '✅ 全単語保存済み' : '⭐ 全単語を単語帳に保存';
-}
-
-// ===== 単語帳トグル（翻訳結果の単語チップ用）=====
-function toggleWordbook(event, zh) {
-  event.stopPropagation();
-  const word = WORD_DICT.find(w => w.zh === zh);
-  if (!word) return;
-
-  const idx = wordbook.findIndex(w => w.zh === zh);
-  if (idx >= 0) {
-    wordbook.splice(idx, 1);
-  } else {
-    wordbook.push({ zh: word.zh, pinyin: word.pinyin, meaning: word.meaning, ja: word.ja });
   }
 
   saveWordbook();
@@ -636,7 +337,7 @@ function toggleWordbook(event, zh) {
     }
   }
 
-  // モーダル内のボタンも更新
+  // モーダル内ボタンも更新
   const modalAddBtn = document.querySelector('.modal-add-btn');
   if (modalAddBtn && modalAddBtn.dataset.zh === zh) {
     const isSaved = wordbook.some(w => w.zh === zh);
@@ -645,19 +346,154 @@ function toggleWordbook(event, zh) {
   }
 }
 
-// ===== 単語モーダル =====
+// ===== 文法帳トグル（解析結果から）=====
+function toggleGrammarbook(event, pattern) {
+  event.stopPropagation();
+  const g = GRAMMAR_PATTERNS.find(gp => gp.pattern === pattern);
+  if (!g) return;
+
+  const idx = grammarbook.findIndex(gb => gb.pattern === pattern);
+  if (idx >= 0) {
+    grammarbook.splice(idx, 1);
+    showToast(`「${pattern}」を文法帳から削除しました`);
+  } else {
+    grammarbook.push({ ...g, savedAt: new Date().toLocaleDateString('ja-JP') });
+    showToast(`📌 「${pattern}」を文法帳に保存しました`);
+  }
+
+  saveGrammarbook();
+  updateGrammarbookCount();
+
+  const btn = event.target;
+  const isSaved = grammarbook.some(gb => gb.pattern === pattern);
+  btn.textContent = isSaved ? '📌' : '📎';
+  btn.classList.toggle('saved', isSaved);
+}
+
+// ===== 文法帳トグル（リファレンスから）=====
+function toggleGrammarbookFromReference(event, pattern) {
+  event.stopPropagation();
+  const g = GRAMMAR_PATTERNS.find(gp => gp.pattern === pattern);
+  if (!g) return;
+
+  const idx = grammarbook.findIndex(gb => gb.pattern === pattern);
+  if (idx >= 0) {
+    grammarbook.splice(idx, 1);
+    showToast(`「${pattern}」を文法帳から削除しました`);
+  } else {
+    grammarbook.push({ ...g, savedAt: new Date().toLocaleDateString('ja-JP') });
+    showToast(`📌 「${pattern}」を文法帳に保存しました`);
+  }
+
+  saveGrammarbook();
+  updateGrammarbookCount();
+
+  const btn = event.target;
+  const isSaved = grammarbook.some(gb => gb.pattern === pattern);
+  btn.textContent = isSaved ? '📌' : '📎';
+  btn.classList.toggle('saved', isSaved);
+}
+
+// ===== 文法帳トグル（モーダルから）=====
+function toggleGrammarbookFromModal(pattern) {
+  const g = GRAMMAR_PATTERNS.find(gp => gp.pattern === pattern);
+  if (!g) return;
+
+  const idx = grammarbook.findIndex(gb => gb.pattern === pattern);
+  if (idx >= 0) {
+    grammarbook.splice(idx, 1);
+    showToast(`「${pattern}」を文法帳から削除しました`);
+  } else {
+    grammarbook.push({ ...g, savedAt: new Date().toLocaleDateString('ja-JP') });
+    showToast(`📌 「${pattern}」を文法帳に保存しました`);
+  }
+
+  saveGrammarbook();
+  updateGrammarbookCount();
+
+  // モーダルボタン更新
+  const btn = document.querySelector('.grammar-modal-save-btn');
+  if (btn) {
+    const isSaved = grammarbook.some(gb => gb.pattern === pattern);
+    btn.textContent = isSaved ? '📌 文法帳から削除' : '📎 文法帳に保存';
+    btn.className = `btn ${isSaved ? 'btn-danger' : 'btn-primary'} grammar-modal-save-btn`;
+  }
+}
+
+// ===== 単語モーダル（強化版）=====
 function openWordModal(word) {
   const isSaved = wordbook.some(w => w.zh === word.zh);
+  const displayPinyin = word.pinyin ? word.pinyin.replace(/ /g, '') : '';
+
+  const pinyinHtml = typeof addPinyinToText === 'function'
+    ? addPinyinToText(word.zh)
+    : word.zh;
+
+  // 複数例文セクション
+  let examplesHtml = '';
+  if (word.examples && word.examples.length > 0) {
+    examplesHtml = `
+      <div class="modal-section">
+        <div class="modal-section-title">📝 例文</div>
+        <ul class="modal-examples-list">
+          ${word.examples.map(ex => `<li class="modal-example-item">${ex}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  } else if (word.example) {
+    examplesHtml = `<div class="modal-example">📝 例文：${word.example}</div>`;
+  }
+
+  // 用法セクション
+  const usageHtml = word.usage
+    ? `<div class="modal-section"><div class="modal-section-title">💡 用法・ポイント</div><div class="modal-usage">${word.usage}</div></div>`
+    : '';
+
+  // 類義語セクション
+  let synonymsHtml = '';
+  if (word.synonyms && word.synonyms.length > 0) {
+    synonymsHtml = `
+      <div class="modal-section">
+        <div class="modal-section-title">🔗 類義語</div>
+        <div class="modal-synonyms">
+          ${word.synonyms.map(s => `<span class="modal-synonym-chip">${s}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // 反義語セクション
+  let antonymsHtml = '';
+  if (word.antonyms && word.antonyms.length > 0) {
+    antonymsHtml = `
+      <div class="modal-section">
+        <div class="modal-section-title">↔️ 反義語</div>
+        <div class="modal-synonyms">
+          ${word.antonyms.map(a => `<span class="modal-antonym-chip">${a}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
   modalBody.innerHTML = `
-    <p class="modal-chinese">${word.zh}</p>
-    <p class="modal-pinyin">${word.pinyin}</p>
-    <p class="modal-meaning"><strong>意味：</strong>${word.meaning}</p>
-    <p class="modal-meaning"><strong>品詞：</strong>${word.type}</p>
-    <div class="modal-example">📝 例文：${word.example}</div>
+    <div class="modal-chinese-wrap">${pinyinHtml}</div>
+    <p class="modal-pinyin">${displayPinyin}</p>
+    <div class="modal-info-grid">
+      ${word.meaning ? `<div class="modal-info-item"><span class="modal-info-label">意味</span><span class="modal-info-value">${word.meaning}</span></div>` : ''}
+      ${word.type    ? `<div class="modal-info-item"><span class="modal-info-label">品詞</span><span class="modal-info-value">${word.type}</span></div>` : ''}
+      ${word.ja      ? `<div class="modal-info-item"><span class="modal-info-label">日本語</span><span class="modal-info-value">${word.ja}</span></div>` : ''}
+    </div>
+    ${examplesHtml}
+    ${usageHtml}
+    ${synonymsHtml}
+    ${antonymsHtml}
+    <div class="modal-speak-row">
+      <button class="btn btn-secondary btn-sm" onclick="speakChinese('${escapeAttr(word.zh)}')">🔊 発音を聞く</button>
+    </div>
     <button
       class="btn ${isSaved ? 'btn-danger' : 'btn-primary'} modal-add-btn"
       data-zh="${word.zh}"
-      onclick="toggleWordbook(event, '${word.zh}')"
+      onclick="toggleWordbook(event, '${escapeAttr(word.zh)}')"
     >
       ${isSaved ? '⭐ 単語帳から削除' : '☆ 単語帳に追加'}
     </button>
@@ -669,23 +505,164 @@ function closeModal() {
   wordModal.classList.add('hidden');
 }
 
+// ===== 文法モーダル（強化版）=====
+function openGrammarModal(g) {
+  const isSaved = grammarbook.some(gb => gb.pattern === g.pattern);
+
+  // 詳細説明
+  const detailHtml = g.detail
+    ? `<div class="grammar-modal-detail">${g.detail}</div>`
+    : '';
+
+  // 複数例文
+  let examplesHtml = '';
+  if (g.examples && g.examples.length > 0) {
+    examplesHtml = `
+      <div class="modal-section">
+        <div class="modal-section-title">📝 例文一覧</div>
+        <ul class="modal-examples-list">
+          ${g.examples.map(ex => `
+            <li class="modal-example-item grammar-example-item">
+              <span class="grammar-ex-text">${ex}</span>
+              <button class="grammar-ex-speak" onclick="event.stopPropagation();speakChinese('${escapeAttr(ex.split('(')[0].trim())}')">🔊</button>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `;
+  } else {
+    examplesHtml = `<div class="grammar-modal-example">📝 例文：${g.example}</div>`;
+  }
+
+  // 練習問題
+  let practiceHtml = '';
+  if (g.practice && g.practice.length > 0) {
+    practiceHtml = `
+      <div class="modal-section">
+        <div class="modal-section-title">✏️ 練習問題</div>
+        <div class="practice-list">
+          ${g.practice.map((p, i) => `
+            <div class="practice-item">
+              <div class="practice-q">Q${i + 1}. ${p.q}</div>
+              <div class="practice-a-wrap">
+                <button class="practice-toggle-btn" onclick="togglePracticeAnswer(this)">答えを見る</button>
+                <div class="practice-a hidden">A. ${p.a}
+                  <button class="grammar-ex-speak" onclick="event.stopPropagation();speakChinese('${escapeAttr(p.a)}')">🔊</button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  grammarModalBody.innerHTML = `
+    <div class="grammar-modal-pattern">${g.pattern}</div>
+    <div class="grammar-modal-desc">${g.desc}</div>
+    ${detailHtml}
+    ${examplesHtml}
+    ${practiceHtml}
+    <button
+      class="btn ${isSaved ? 'btn-danger' : 'btn-primary'} grammar-modal-save-btn"
+      onclick="toggleGrammarbookFromModal('${escapeAttr(g.pattern)}')"
+    >
+      ${isSaved ? '📌 文法帳から削除' : '📎 文法帳に保存'}
+    </button>
+  `;
+  grammarModal.classList.remove('hidden');
+}
+
+function closeGrammarModal() {
+  grammarModal.classList.add('hidden');
+}
+
+// ===== 練習問題の答えトグル =====
+function togglePracticeAnswer(btn) {
+  const answerEl = btn.nextElementSibling;
+  if (!answerEl) return;
+  const isHidden = answerEl.classList.contains('hidden');
+  answerEl.classList.toggle('hidden', !isHidden);
+  btn.textContent = isHidden ? '答えを隠す' : '答えを見る';
+}
+
+// ===== 文法帳レンダリング =====
+function renderGrammarbook() {
+  if (grammarbook.length === 0) {
+    grammarbookList.innerHTML = '<p class="empty-msg">文法帳はまだ空です。解析結果の文法ポイントから追加してください。</p>';
+    return;
+  }
+
+  grammarbookList.innerHTML = '';
+  grammarbook.forEach((g, i) => {
+    const item = document.createElement('div');
+    item.className = 'grammarbook-item';
+    const safeExample = (g.example || '').replace(/'/g, "\\'");
+    item.innerHTML = `
+      <div class="gb-header">
+        <div class="gb-pattern">${g.pattern}</div>
+        <div class="gb-actions">
+          <button class="gb-speak" onclick="speakChinese('${safeExample}')" title="例文を聞く">🔊</button>
+          <button class="gb-delete" onclick="deleteFromGrammarbook(${i})" title="削除">✕</button>
+        </div>
+      </div>
+      <div class="gb-desc">${g.desc}</div>
+      <div class="gb-example">📝 例文：${g.example}</div>
+      ${g.savedAt ? `<div class="gb-date">保存日：${g.savedAt}</div>` : ''}
+    `;
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('gb-speak') || e.target.classList.contains('gb-delete')) return;
+      openGrammarModal(g);
+    });
+    grammarbookList.appendChild(item);
+  });
+}
+
+function deleteFromGrammarbook(index) {
+  grammarbook.splice(index, 1);
+  saveGrammarbook();
+  updateGrammarbookCount();
+  renderGrammarbook();
+}
+
+function saveGrammarbook() {
+  localStorage.setItem('grammarbook', JSON.stringify(grammarbook));
+}
+
+function updateGrammarbookCount() {
+  if (grammarbookCount) grammarbookCount.textContent = grammarbook.length;
+}
+
 // ===== 単語帳レンダリング =====
 function renderWordbook() {
   if (wordbook.length === 0) {
-    wordbookList.innerHTML = '<p class="empty-msg">単語帳はまだ空です。翻訳結果から単語を追加してください。</p>';
+    wordbookList.innerHTML = '<p class="empty-msg">単語帳はまだ空です。解析結果から単語を追加してください。</p>';
     return;
   }
 
   wordbookList.innerHTML = '';
   wordbook.forEach((w, i) => {
+    const displayPinyin = w.pinyin ? w.pinyin.replace(/ /g, '') : '';
+    const safeZh = w.zh.replace(/'/g, "\\'");
     const item = document.createElement('div');
     item.className = 'wordbook-item';
     item.innerHTML = `
-      <div class="wb-chinese">${w.zh}</div>
-      <div class="wb-pinyin">${w.pinyin}</div>
+      <div class="wb-top-row">
+        <div class="wb-chinese">${w.zh}</div>
+        <button class="wb-speak" onclick="event.stopPropagation();speakChinese('${safeZh}')" title="発音を聞く">🔊 発音</button>
+      </div>
+      <div class="wb-pinyin">${displayPinyin || '—'}</div>
       <div class="wb-meaning">${w.meaning || '—'}</div>
-      <button class="wb-delete" onclick="deleteFromWordbook(${i})" title="削除">✕</button>
+      ${w.ja   ? `<div class="wb-ja">🇯🇵 ${w.ja}</div>` : ''}
+      ${w.type ? `<span class="wb-type">${w.type}</span>` : ''}
+      <div class="wb-actions">
+        <button class="wb-delete" onclick="event.stopPropagation();deleteFromWordbook(${i})" title="削除">✕ 削除</button>
+      </div>
     `;
+    item.addEventListener('click', () => {
+      const dictWord = WORD_DICT.find(d => d.zh === w.zh) || w;
+      openWordModal(dictWord);
+    });
     wordbookList.appendChild(item);
   });
 }
@@ -702,7 +679,7 @@ function saveWordbook() {
 }
 
 function updateWordbookCount() {
-  wordbookCount.textContent = wordbook.length;
+  if (wordbookCount) wordbookCount.textContent = wordbook.length;
 }
 
 // ===== フラッシュカード =====
@@ -719,9 +696,11 @@ function renderFlashcard() {
   flashcardIndex = Math.max(0, Math.min(flashcardIndex, wordbook.length - 1));
 
   const word = wordbook[flashcardIndex];
+  const displayPinyin = word.pinyin ? word.pinyin.replace(/ /g, '') : '';
+
   fcFront.textContent = word.ja || word.meaning || word.zh;
   fcBackChinese.textContent = word.zh;
-  fcBackPinyin.textContent = word.pinyin;
+  fcBackPinyin.textContent  = displayPinyin;
   fcBackMeaning.textContent = word.meaning || '';
   fcCounter.textContent = `${flashcardIndex + 1} / ${wordbook.length}`;
 
@@ -774,15 +753,7 @@ function showToast(msg) {
   }, 2500);
 }
 
-// ===== UI ヘルパー =====
-function showLoading(show) {
-  loadingEl.classList.toggle('hidden', !show);
-  translateBtn.disabled = show;
-  translateBtn.innerHTML = show
-    ? '翻訳中...'
-    : '<span class="btn-icon">🔄</span> 中国語に翻訳する';
-}
-
+// ===== エラー表示 =====
 function showError(msg) {
   errorMsg.textContent = msg;
   errorMsg.classList.remove('hidden');
@@ -790,6 +761,11 @@ function showError(msg) {
 
 function hideError() {
   errorMsg.classList.add('hidden');
+}
+
+// ===== ユーティリティ =====
+function escapeAttr(str) {
+  return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 // ===== 音声リスト読み込み待ち =====
@@ -801,7 +777,7 @@ if (window.speechSynthesis) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeModal();
-    closeEpisodeModal();
+    closeGrammarModal();
   }
 });
 

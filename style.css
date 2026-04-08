@@ -43,7 +43,7 @@ body {
 }
 
 .header-inner {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -63,16 +63,17 @@ body {
 .nav {
   display: flex;
   gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .nav-btn {
   background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.3);
   color: #fff;
-  padding: 0.4rem 1rem;
+  padding: 0.4rem 0.9rem;
   border-radius: 20px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: var(--transition);
   display: flex;
   align-items: center;
@@ -99,7 +100,7 @@ body {
 
 /* ===== メインコンテンツ ===== */
 .main {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
 }
@@ -158,6 +159,12 @@ body {
   gap: 0.5rem;
 }
 
+.input-btn-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .char-count {
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -203,8 +210,15 @@ body {
 .btn-danger:hover { opacity: 0.85; }
 
 .btn-sm { padding: 0.35rem 0.9rem; font-size: 0.85rem; }
+.btn-xs { padding: 0.25rem 0.65rem; font-size: 0.78rem; border-radius: 12px; }
 
-/* ===== 翻訳結果 ===== */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ===== 解析結果 ===== */
 .result-section { animation: fadeIn 0.4s ease; }
 
 @keyframes fadeIn {
@@ -212,31 +226,21 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.result-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-@media (max-width: 600px) {
-  .result-grid { grid-template-columns: 1fr; }
+.result-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .result-label {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-muted);
-  margin-bottom: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.result-card-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
 }
 
 .result-text {
@@ -249,29 +253,38 @@ body {
 .chinese-text {
   font-size: 1.1rem;
   letter-spacing: 0.02em;
-  line-height: 2.8;
+  line-height: 3.2;
 }
 
 .pinyin-block {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  margin: 0 2px;
+  margin: 0 1px;
   vertical-align: bottom;
 }
 
 .pinyin-block .pinyin-ruby {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--secondary);
   line-height: 1.2;
   white-space: nowrap;
-  font-family: 'Arial', sans-serif;
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  letter-spacing: 0;
 }
 
 .pinyin-block .pinyin-char {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 500;
   line-height: 1.4;
+}
+
+.pinyin-char.pinyin-punct {
+  font-size: 1.1rem;
+  line-height: 1.4;
+  vertical-align: bottom;
+  display: inline-block;
+  margin: 0 1px;
 }
 
 /* ===== 単語リスト ===== */
@@ -325,7 +338,8 @@ body {
 
 /* ===== 文法セクション ===== */
 .grammar-card { }
-.grammar-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--secondary-dark); }
+.grammar-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--secondary-dark); }
+.grammar-desc-text { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; }
 
 .grammar-list { display: flex; flex-direction: column; gap: 0.75rem; }
 
@@ -334,14 +348,40 @@ body {
   border-left: 4px solid var(--success);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.grammar-item:hover {
+  background: #e0f5f2;
+  transform: translateX(2px);
+}
+
+.grammar-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
 }
 
 .grammar-item .grammar-pattern {
   font-weight: 700;
   color: var(--success);
   font-size: 1rem;
-  margin-bottom: 0.25rem;
 }
+
+.grammar-save-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: var(--transition);
+  opacity: 0.6;
+}
+.grammar-save-btn:hover { opacity: 1; transform: scale(1.2); }
+.grammar-save-btn.saved { opacity: 1; }
 
 .grammar-item .grammar-desc {
   font-size: 0.9rem;
@@ -405,48 +445,176 @@ body {
   padding: 1rem;
   position: relative;
   transition: var(--transition);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .wordbook-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
 
+.wordbook-item .wb-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.1rem;
+}
+
 .wordbook-item .wb-chinese {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--primary-dark);
-  margin-bottom: 0.2rem;
+  line-height: 1.2;
 }
 
 .wordbook-item .wb-pinyin {
   font-size: 0.85rem;
   color: var(--secondary);
-  margin-bottom: 0.3rem;
+  font-family: 'Arial', sans-serif;
+  margin-bottom: 0.1rem;
 }
 
 .wordbook-item .wb-meaning {
   font-size: 0.9rem;
   color: var(--text);
+  font-weight: 600;
 }
 
+.wordbook-item .wb-ja {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.wordbook-item .wb-type {
+  display: inline-block;
+  font-size: 0.72rem;
+  background: var(--secondary);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.1rem 0.5rem;
+  margin-top: 0.2rem;
+  align-self: flex-start;
+}
+
+.wordbook-item .wb-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.wordbook-item .wb-speak {
+  background: #e8f0fe;
+  color: var(--secondary);
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  transition: var(--transition);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wordbook-item .wb-speak:hover { background: var(--secondary); color: #fff; }
+
 .wordbook-item .wb-delete {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+.wordbook-item .wb-delete:hover { color: var(--danger); background: #fff0f0; }
+
+/* ===== 文法帳 ===== */
+.grammarbook-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.grammarbook-item {
+  background: linear-gradient(135deg, #f0faf8, #e0f5f2);
+  border: 1.5px solid var(--success);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  position: relative;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.grammarbook-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+
+.grammarbook-item .gb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.grammarbook-item .gb-pattern {
+  font-weight: 700;
+  color: var(--success);
+  font-size: 1.05rem;
+}
+
+.grammarbook-item .gb-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.grammarbook-item .gb-speak {
+  background: #e0f5f2;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--success);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+
+.grammarbook-item .gb-speak:hover { background: var(--success); color: #fff; }
+
+.grammarbook-item .gb-delete {
   background: none;
   border: none;
   cursor: pointer;
   font-size: 0.85rem;
   color: var(--text-muted);
-  opacity: 0;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
   transition: var(--transition);
 }
 
-.wordbook-item:hover .wb-delete { opacity: 1; }
-.wordbook-item .wb-delete:hover { color: var(--danger); }
+.grammarbook-item .gb-delete:hover { color: var(--danger); background: #fff0f0; }
+
+.grammarbook-item .gb-desc {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+}
+
+.grammarbook-item .gb-example {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 0.3rem;
+}
+
+.grammarbook-item .gb-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
 
 /* ===== フラッシュカード ===== */
 .flashcard-container { text-align: center; }
-
-.flashcard-area { }
 
 .progress-bar-wrap {
   background: var(--border);
@@ -517,7 +685,7 @@ body {
 
 .fc-word { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
 .fc-chinese { font-size: 2rem; letter-spacing: 0.1em; }
-.fc-pinyin { font-size: 1rem; opacity: 0.85; margin-bottom: 0.5rem; }
+.fc-pinyin { font-size: 1rem; opacity: 0.85; margin-bottom: 0.5rem; font-family: 'Arial', sans-serif; }
 .fc-meaning { font-size: 1rem; opacity: 0.9; }
 .fc-hint { font-size: 0.85rem; opacity: 0.7; margin-top: 0.5rem; }
 
@@ -525,6 +693,74 @@ body {
   display: flex;
   gap: 1rem;
   justify-content: center;
+}
+
+/* ===== 文法リファレンス ===== */
+.reference-search-wrap {
+  margin-bottom: 1.25rem;
+}
+
+.reference-search {
+  width: 100%;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color var(--transition);
+  background: #fafafa;
+}
+
+.reference-search:focus {
+  outline: none;
+  border-color: var(--secondary);
+  background: #fff;
+}
+
+.reference-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reference-item {
+  background: #f0faf8;
+  border-left: 4px solid var(--success);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.reference-item:hover {
+  background: #e0f5f2;
+  transform: translateX(3px);
+  box-shadow: var(--shadow);
+}
+
+.reference-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.3rem;
+}
+
+.reference-pattern {
+  font-weight: 700;
+  color: var(--success);
+  font-size: 1rem;
+}
+
+.reference-desc {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.reference-example {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* ===== モーダル ===== */
@@ -552,11 +788,17 @@ body {
   background: var(--bg-card);
   border-radius: var(--radius);
   padding: 2rem;
-  max-width: 420px;
+  max-width: 480px;
   width: 100%;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
   animation: modalIn 0.25s ease;
   z-index: 1;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content-wide {
+  max-width: 640px;
 }
 
 @keyframes modalIn {
@@ -577,119 +819,254 @@ body {
 }
 .modal-close:hover { color: var(--danger); }
 
-.modal-chinese { font-size: 2.5rem; font-weight: 700; color: var(--primary); text-align: center; margin-bottom: 0.25rem; }
-.modal-pinyin { font-size: 1.1rem; color: var(--secondary); text-align: center; margin-bottom: 1rem; }
-.modal-meaning { font-size: 1rem; margin-bottom: 0.5rem; }
-.modal-example { background: #f8f9fa; border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; }
-.modal-add-btn { width: 100%; }
+/* ===== 単語モーダル ===== */
+.modal-chinese-wrap {
+  font-size: 1.4rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  line-height: 3;
+}
 
-/* ===== エピソード一覧 ===== */
-.episodes-list {
+.modal-chinese-wrap .pinyin-block .pinyin-char {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.modal-chinese-wrap .pinyin-block .pinyin-ruby {
+  font-size: 0.85rem;
+  color: var(--secondary);
+}
+
+.modal-pinyin {
+  font-size: 1.2rem;
+  color: var(--secondary);
+  text-align: center;
+  margin-bottom: 1rem;
+  font-family: 'Arial', sans-serif;
+}
+
+/* 単語情報グリッド */
+.modal-info-grid {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.episode-item {
-  background: linear-gradient(135deg, #f0f4ff, #e8eeff);
-  border: 1.5px solid #c5d0f5;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  background: #f8f9fa;
   border-radius: var(--radius-sm);
-  padding: 1rem 1.25rem;
-  position: relative;
-  transition: var(--transition);
-  cursor: pointer;
+  padding: 0.75rem 1rem;
 }
 
-.episode-item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
-  border-color: var(--secondary);
-}
-
-.episode-item .ep-date {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin-bottom: 0.4rem;
-}
-
-.episode-item .ep-original {
-  font-size: 0.95rem;
-  color: var(--text);
-  margin-bottom: 0.4rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.episode-item .ep-translated {
-  font-size: 0.9rem;
-  color: var(--secondary-dark);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.episode-item .ep-actions {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
+.modal-info-item {
   display: flex;
-  gap: 0.3rem;
-  opacity: 0;
-  transition: var(--transition);
+  gap: 0.5rem;
+  font-size: 0.95rem;
 }
 
-.episode-item:hover .ep-actions { opacity: 1; }
-
-.episode-item .ep-edit,
-.episode-item .ep-delete {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9rem;
+.modal-info-label {
+  font-weight: 700;
   color: var(--text-muted);
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  transition: var(--transition);
+  min-width: 4em;
+  font-size: 0.85rem;
 }
 
-.episode-item .ep-edit:hover { color: var(--secondary); background: #e8f0fe; }
-.episode-item .ep-delete:hover { color: var(--danger); background: #fff0f0; }
-
-/* ===== エピソードモーダル ===== */
-.modal-content-wide {
-  max-width: 600px;
+.modal-info-value {
+  color: var(--text);
 }
 
-.ep-modal-date {
-  font-size: 0.8rem;
-  color: var(--text-muted);
+/* モーダル内セクション */
+.modal-section {
   margin-bottom: 1rem;
 }
 
-.ep-modal-section {
-  margin-bottom: 1rem;
-}
-
-.ep-modal-label {
-  font-size: 0.8rem;
+.modal-section-title {
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
-.ep-modal-text {
-  font-size: 1rem;
-  line-height: 1.7;
+/* 例文リスト */
+.modal-examples-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-example-item {
+  background: #f8f9fa;
+  border-left: 3px solid var(--secondary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
   color: var(--text);
+  line-height: 1.6;
 }
 
-.ep-modal-chinese {
-  font-size: 1.1rem;
-  line-height: 2.8;
+/* 文法例文（発音ボタン付き） */
+.grammar-example-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-left-color: var(--success);
+}
+
+.grammar-ex-text {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.grammar-ex-speak {
+  background: #e0f5f2;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--success);
+  padding: 0.2rem 0.4rem;
+  border-radius: 5px;
+  transition: var(--transition);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.grammar-ex-speak:hover { background: var(--success); color: #fff; }
+
+/* 用法 */
+.modal-usage {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* 類義語・反義語チップ */
+.modal-synonyms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.modal-synonym-chip {
+  background: #e8f0fe;
+  border: 1px solid #c5d0f5;
+  border-radius: 16px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
   color: var(--secondary-dark);
+}
+
+.modal-antonym-chip {
+  background: #fff0f0;
+  border: 1px solid #ffcdd2;
+  border-radius: 16px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.modal-speak-row { margin-bottom: 0.75rem; }
+.modal-add-btn { width: 100%; }
+
+/* ===== 文法モーダル ===== */
+.grammar-modal-pattern {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--success);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.grammar-modal-desc {
+  font-size: 1rem;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.grammar-modal-detail {
+  background: #f0faf8;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.8;
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--success);
+}
+
+.grammar-modal-example {
+  background: #f0faf8;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.grammar-modal-save-btn { width: 100%; margin-top: 0.5rem; }
+
+/* ===== 練習問題 ===== */
+.practice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.practice-item {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+}
+
+.practice-q {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.practice-a-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.practice-toggle-btn {
+  background: var(--secondary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: var(--transition);
+  align-self: flex-start;
+  font-weight: 600;
+}
+.practice-toggle-btn:hover { background: var(--secondary-dark); }
+
+.practice-a {
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1.6;
 }
 
 /* ===== トースト通知 ===== */
@@ -716,100 +1093,16 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
-/* ===== エピソード編集フォーム ===== */
-.edit-textarea {
-  width: 100%;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.75rem 1rem;
-  font-size: 0.95rem;
-  font-family: inherit;
-  resize: vertical;
-  transition: border-color var(--transition);
-  line-height: 1.7;
-  background: #fafafa;
-}
-
-.edit-textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  background: #fff;
-}
-
-.edit-loading {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  padding: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-/* ===== エピソードモーダル フッター ===== */
-.ep-modal-footer {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-
-/* ===== エピソード内単語チップ ===== */
-.ep-modal-words {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.ep-word-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  background: #f0f4ff;
-  border: 1.5px solid #c5d0f5;
-  border-radius: 20px;
-  padding: 0.3rem 0.75rem;
-  cursor: pointer;
-  transition: var(--transition);
-  font-size: 0.9rem;
-  user-select: none;
-}
-
-.ep-word-chip:hover {
-  background: var(--secondary);
-  color: #fff;
-  border-color: var(--secondary);
-  transform: translateY(-1px);
-}
-
-.ep-word-chip.saved {
-  background: #fff8e1;
-  border-color: var(--accent);
-}
-
-.ep-word-chip .chip-chinese { font-weight: 700; font-size: 1rem; }
-.ep-word-chip .chip-pinyin { font-size: 0.75rem; color: var(--text-muted); }
-.ep-word-chip:hover .chip-pinyin { color: rgba(255,255,255,0.8); }
-.ep-word-chip.saved .chip-pinyin { color: var(--text-muted); }
-.ep-word-chip .chip-star { font-size: 0.85rem; }
-
-.ep-save-all-btn {
-  margin-top: 0.25rem;
-}
-
-.ep-save-all-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ===== btn-warning ===== */
-.btn-warning {
-  background: #f4a261;
-  color: #fff;
-}
-.btn-warning:hover { background: #e07b3a; }
-
 /* ===== ユーティリティ ===== */
 .hidden { display: none !important; }
 .empty-msg { color: var(--text-muted); text-align: center; padding: 2rem; font-size: 0.95rem; }
+
+/* ===== レスポンシブ ===== */
+@media (max-width: 600px) {
+  .main { padding: 1rem; }
+  .card { padding: 1rem; }
+  .wordbook-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .modal-content { padding: 1.25rem; }
+  .header-inner { gap: 0.4rem; }
+  .nav-btn { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
+}

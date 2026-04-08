@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>中国語学習アプリ - マイエピソードで学ぶ</title>
+  <title>中国語学習アプリ - 文法・単語解説</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,89 +11,69 @@
     <div class="header-inner">
       <h1 class="logo">🇨🇳 中国語学習</h1>
       <nav class="nav">
-        <button class="nav-btn active" data-tab="translate">翻訳・学習</button>
-        <button class="nav-btn" data-tab="episodes">保存エピソード <span id="episode-count" class="badge">0</span></button>
+        <button class="nav-btn active" data-tab="analyze">文章解析</button>
         <button class="nav-btn" data-tab="wordbook">単語帳 <span id="wordbook-count" class="badge">0</span></button>
+        <button class="nav-btn" data-tab="grammarbook">文法帳 <span id="grammarbook-count" class="badge">0</span></button>
         <button class="nav-btn" data-tab="flashcard">フラッシュカード</button>
+        <button class="nav-btn" data-tab="reference">文法リファレンス</button>
       </nav>
     </div>
   </header>
 
   <main class="main">
 
-    <!-- ===== 翻訳・学習タブ ===== -->
-    <section id="tab-translate" class="tab-content active">
+    <!-- ===== 文章解析タブ ===== -->
+    <section id="tab-analyze" class="tab-content active">
       <div class="card input-card">
-        <h2 class="card-title">📝 あなたのエピソードを入力</h2>
-        <p class="card-desc">日常の出来事や思い出を日本語で書いてください。中国語に翻訳して学習できます。</p>
+        <h2 class="card-title">🔍 中国語文章を解析する</h2>
+        <p class="card-desc">中国語のテキストを入力すると、単語・ピンイン・文法ポイントを自動解析します。</p>
+
         <textarea
-          id="episode-input"
+          id="chinese-input"
           class="episode-textarea"
-          placeholder="例：今日は友達とカフェに行きました。美味しいコーヒーを飲みながら、楽しい話をしました。"
-          rows="5"
+          placeholder="例：我喜欢喝咖啡。今天天气很好。"
+          rows="4"
         ></textarea>
         <div class="input-actions">
-          <span id="char-count" class="char-count">0 / 500文字</span>
-          <button id="translate-btn" class="btn btn-primary">
-            <span class="btn-icon">🔄</span> 中国語に翻訳する
-          </button>
+          <span id="char-count" class="char-count">0文字</span>
+          <div class="input-btn-group">
+            <button id="sample-btn" class="btn btn-secondary btn-sm">📝 サンプル文を入れる</button>
+            <button id="analyze-btn" class="btn btn-primary">
+              <span class="btn-icon">🔍</span> 解析する
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- 翻訳結果 -->
+      <!-- 解析結果 -->
       <div id="result-section" class="result-section hidden">
-        <div class="result-grid">
-          <!-- 原文 -->
-          <div class="card result-card">
-            <h3 class="result-label">🇯🇵 日本語（原文）</h3>
-            <p id="original-text" class="result-text"></p>
+
+        <!-- ピンイン付き中国語表示 -->
+        <div class="card result-card">
+          <div class="result-card-header">
+            <h3 class="result-label">🇨🇳 ピンイン付き表示</h3>
+            <button id="speak-btn" class="btn btn-secondary btn-sm">🔊 発音を聞く</button>
           </div>
-          <!-- 翻訳 -->
-          <div class="card result-card">
-            <h3 class="result-label">🇨🇳 中国語（ピンイン付き）</h3>
-            <div id="translated-text" class="result-text chinese-text"></div>
-            <div class="result-card-actions">
-              <button id="speak-btn" class="btn btn-secondary btn-sm">🔊 発音を聞く</button>
-              <button id="save-episode-btn" class="btn btn-accent btn-sm">💾 エピソードを保存</button>
-            </div>
-          </div>
+          <div id="pinyin-text" class="result-text chinese-text"></div>
         </div>
 
-        <!-- 単語学習セクション -->
+        <!-- 単語解説セクション -->
         <div class="card learn-card">
-          <h3 class="learn-title">📚 単語・フレーズを学ぶ</h3>
-          <p class="learn-desc">単語をクリックすると詳細が表示されます。⭐ で単語帳に追加できます。</p>
+          <h3 class="learn-title">📚 単語・フレーズ解説</h3>
+          <p class="learn-desc">単語をクリックすると詳細解説が表示されます。⭐ で単語帳に追加できます。</p>
           <div id="word-list" class="word-list"></div>
         </div>
 
-        <!-- 文法パターン -->
-        <div id="grammar-section" class="card grammar-card">
+        <!-- 文法ポイント -->
+        <div id="grammar-section" class="card grammar-card hidden">
           <h3 class="grammar-title">📖 文法ポイント</h3>
+          <p class="grammar-desc">文法事項をクリックすると詳細解説が表示されます。📌 で文法帳に保存できます。</p>
           <div id="grammar-list" class="grammar-list"></div>
         </div>
       </div>
 
-      <!-- ローディング -->
-      <div id="loading" class="loading hidden">
-        <div class="spinner"></div>
-        <p>翻訳中...</p>
-      </div>
-
       <!-- エラー -->
       <div id="error-msg" class="error-msg hidden"></div>
-    </section>
-
-    <!-- ===== 保存エピソードタブ ===== -->
-    <section id="tab-episodes" class="tab-content hidden">
-      <div class="card">
-        <div class="wordbook-header">
-          <h2 class="card-title">💾 保存したエピソード</h2>
-          <button id="clear-episodes-btn" class="btn btn-danger btn-sm">全削除</button>
-        </div>
-        <div id="episodes-list" class="episodes-list">
-          <p class="empty-msg">保存されたエピソードはありません。翻訳後に「エピソードを保存」ボタンで保存できます。</p>
-        </div>
-      </div>
     </section>
 
     <!-- ===== 単語帳タブ ===== -->
@@ -104,7 +84,20 @@
           <button id="clear-wordbook-btn" class="btn btn-danger btn-sm">全削除</button>
         </div>
         <div id="wordbook-list" class="wordbook-list">
-          <p class="empty-msg">単語帳はまだ空です。翻訳結果から単語を追加してください。</p>
+          <p class="empty-msg">単語帳はまだ空です。解析結果から単語を追加してください。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 文法帳タブ ===== -->
+    <section id="tab-grammarbook" class="tab-content hidden">
+      <div class="card">
+        <div class="wordbook-header">
+          <h2 class="card-title">📖 マイ文法帳</h2>
+          <button id="clear-grammarbook-btn" class="btn btn-danger btn-sm">全削除</button>
+        </div>
+        <div id="grammarbook-list" class="grammarbook-list">
+          <p class="empty-msg">文法帳はまだ空です。解析結果の文法ポイントから追加してください。</p>
         </div>
       </div>
     </section>
@@ -142,6 +135,18 @@
       </div>
     </section>
 
+    <!-- ===== 文法リファレンスタブ ===== -->
+    <section id="tab-reference" class="tab-content hidden">
+      <div class="card">
+        <h2 class="card-title">📚 文法リファレンス</h2>
+        <p class="card-desc">中国語の基本文法パターン一覧です。クリックすると詳細解説が表示されます。</p>
+        <div class="reference-search-wrap">
+          <input type="text" id="reference-search" class="reference-search" placeholder="🔍 文法パターンを検索..." />
+        </div>
+        <div id="reference-list" class="reference-list"></div>
+      </div>
+    </section>
+
   </main>
 
   <!-- 単語詳細モーダル -->
@@ -153,12 +158,12 @@
     </div>
   </div>
 
-  <!-- エピソード詳細モーダル -->
-  <div id="episode-modal" class="modal hidden">
-    <div class="modal-overlay" onclick="closeEpisodeModal()"></div>
+  <!-- 文法詳細モーダル -->
+  <div id="grammar-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeGrammarModal()"></div>
     <div class="modal-content modal-content-wide">
-      <button class="modal-close" onclick="closeEpisodeModal()">✕</button>
-      <div id="episode-modal-body"></div>
+      <button class="modal-close" onclick="closeGrammarModal()">✕</button>
+      <div id="grammar-modal-body"></div>
     </div>
   </div>
 
